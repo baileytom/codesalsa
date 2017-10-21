@@ -69,7 +69,13 @@ class SquareGrid:
         self.width = width
         self.height = height
         self.walls = []
-    
+
+    def cost(self, x, y):
+        if (x, y) in self.walls:
+            return 99999
+        else:
+            return 1
+
     def in_bounds(self, id):
         (x, y) = id
         return 0 <= x < self.width and 0 <= y < self.height
@@ -89,7 +95,7 @@ class SquareGrid:
         self.width = 60
         self.height = 60
 
-        self.walls = map.walls
+        self.walls = map.walls + map.resources
 
 """class GridWithWeights(SquareGrid):
     def __init__(self, width, height):

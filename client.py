@@ -43,9 +43,10 @@ class Game:
         #   - Scouts in search mode, target unknown space
         # Stage 2: (Found base) Attack
         #   - All units attack
+        self.last_commands = {}
 
         #for
-
+        self._resource = 0
         self.stage = 1
 
     def get_random_move(self, json_data):
@@ -58,12 +59,6 @@ class Game:
         response = json.dumps(command, separators=(',',':')) + '\n'
         return response
 
-    def respond(self, json_data):
-        units = set([unit['id'] for unit in json_data['unit_updates'] if unit['type'] != 'base'])
-        self.units |= units  # add any additional ids we encounter
-        #for unit in units:
-        #for unit in units:
-        #    if self._units[unit['id']] == None:
 
     def heuristic(self, a, b):
         (x1, y1) = a
@@ -71,6 +66,14 @@ class Game:
         return abs(x1 - x2) + abs(y1 - y2)
 
     def a_star_search(self, start, goal):
+
+
+        if goal == None:
+            return random.choice(self.directions)
+        #return "N"
+
+        start = (start[0] + 29, start[1] + 29)
+        goal = (goal[0] + 29, goal[1] + 29)
 
         graph = SquareGrid(self.map)
 
@@ -95,13 +98,59 @@ class Game:
                     frontier.put(next, priority)
                     came_from[next] = current
 
-        print(current, next)
 
-        return
+        path = self.reconstruct_path(came_from, start, goal)
+
+        #try:
+
+        try:
+            a = path[1]
+            b = path[2]
+        except:
+            a = path[0]
+            b = path[1]
+
+        print("Start: {}, Goal: {}, Move: {}".format(start, goal, (a, b)))
+
+        sX = a[0]
+        sY = a[1]
+
+        eX = b[0]
+        eY = b[1]
+
+
+        print(sX, sY, eX, eY)
+
+        if sX - 1 == eX:
+            return "W"
+        elif sX + 1 == eX:
+            return "E"
+        elif sY - 1 == eY:
+            return "N"
+        elif sY + 1 == eY:
+            return "S"
+        #except:
+        #    pass
+
+        return random.choice(self.directions)
+
+        #return None
 
         #return came_from, cost_so_far
 
+    def reconstruct_path(self, came_from, start, goal):
+        current = goal
+        path = [current]
+        while current != start:
+            current = came_from[current]
+            path.append(current)
+        path.append(start)  # optional
+        path.reverse()  # optional
+        return path
+
     def get_moves(self, json_data):
+        print("____________________")
+        print("________________________________________________________________")
         unit_updates = json_data['unit_updates']
         units = set([unit['id'] for unit in json_data['unit_updates'] if unit['type'] != 'base'])
         self.units |= units
@@ -129,27 +178,85 @@ class Game:
                 if tile['resources'] != None:
                     self.map.settile(tile['x'], tile['y'], "r")
                     self.map.resources.append((tile['x'], tile['y']))
+                    if tile['resources']['total'] == 0:
+                        self._resource += 1
             except:
                 pass
 
+        command = {'commands': []}
+
+        print(self.map.resources)
+        print(self.map.invisible)
+
+        print("unit updates: {}".format(unit_updates))
+
+        if unit_updates == []:
+            for unit_id in units:
+                direction = random.choice(self.directions)
+                move = 'MOVE'
+                command["commands"].append({"command": move, "unit": unit_id, "dir": direction})
 
 
         for unit in unit_updates:
+
+            # Resource debugging
+            print("Resources: {}".format(unit['resource']))
+
+
             move = None
             location = (unit['x'], unit['y'])
-            unit['target'] = location
+            unit['target'] = None
             if self.stage == 1:
                 if unit['type'] == 'worker':
+                    print("test")
                     try:
-                        unit['target'] = self.map.resources[0]
+                        if unit['resource'] > 0:
+                            unit['target'] = (0, 0)
+                        else:
+                            try:
+                                unit['target'] = self.map.resources[self._resource]
+                            except:
+                                unit['target'] = (0, 0)
+                        print("set target")
                     except:
-                        pass
-                    try:
-                        unit['target'] = self.map.invisible[0]
-                    except:
+                        print("Target set failed")
                         pass
 
+                    #try:
+                        #unit['target'] = self.map.invisible[0]
+                    #except:
+                     #   pass
+
                     move = self.a_star_search(location, unit['target'])
+
+                    west_mod = 0
+                    north_mod = 0
+
+                    if move == "N":
+                        north_mod = 1
+                    elif move == "S":
+                        north_mod = -1
+                    elif move == "E":
+                        west_mod = 1
+                    elif move == "W":
+                        west_mod = -1
+
+
+                    print("Location: {}, Target: {}, Westmod: {}, Northmod: {}".format(location, unit['target'], west_mod, north_mod))
+
+
+                    if (unit['x']-west_mod, unit['y']-north_mod) == unit['target']:
+
+                        action = {'command': "GATHER", 'unit': unit['id'], 'dir': move}
+                        command['commands'].append(action)
+
+
+
+                    elif move != None:
+                        print("Move isn't none")
+                        action = {'command': "MOVE", 'unit': unit['id'], 'dir': move}
+                        command['commands'].append(action)
+
                     # Do worker stuff
                 elif unit['type'] == 'scout':
                     pass
@@ -162,12 +269,14 @@ class Game:
                     pass
                     # Scout
 
-        self.map.show_map()
+        #self.map.show_map()
 
-        unit = random.choice(tuple(self.units))
-        direction = random.choice(self.directions)
-        move = 'MOVE'
-        command = {"commands": [{"command": move, "unit": unit, "dir": direction}]}
+        #command['commands'].append({'command': "CREATE", 'unit': })
+
+        print(command)
+
+        self.last_commands = command
+
         response = json.dumps(command, separators=(',', ':')) + '\n'
         return response
 
@@ -178,7 +287,7 @@ class Map:
         self.grid = [[0 for y in range(0,60)] for x in range(0, 60)]
         self.originx = 29
         self.originy = 29
-        self.grid[self.originx][self.originy] = 1
+        self.grid[self.originx][self.originy] = "b"
 
         self.resources = []
         self.walls = []

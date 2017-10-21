@@ -167,6 +167,13 @@ class Game:
         return path
 
     def get_moves(self, json_data):
+
+        command = {'commands': []}
+
+        #if json_data['turn'] == 1:
+        #    action = {'command': "CREATE", 'type': 'scout'}
+            #command['commands'].append(action)
+
         print("____________________")
         print("________________________________________________________________")
         unit_updates = json_data['unit_updates']
@@ -211,7 +218,7 @@ class Game:
                     self.map.resources.remove((tile['x'], tile['y']))
 
 
-        command = {'commands': []}
+
 
         print(self.map.resources)
         #print(self.map.invisible)
@@ -232,7 +239,7 @@ class Game:
 
 
             move = None
-            location = (unit['x'], unit['y'])
+            location = [unit['x'], unit['y']]
             unit['target'] = None
             if self.stage == 1:
                 if unit['type'] == 'worker':
@@ -287,7 +294,21 @@ class Game:
 
                     # Do worker stuff
                 elif unit['type'] == 'scout':
-                    pass
+                    print("Location: {}", location)
+                    print("Walls: {}", self.map.walls)
+                    if (unit['x'], unit['y'] + 1) not in self.map.walls:
+                        action = {'command': "MOVE", 'unit': unit['id'], 'dir': "N"}
+                        command['commands'].append(action)
+                        location[1] += 3
+                    elif (unit['x'] + 1, unit['y']) not in self.map.walls:
+                        action = {'command': "MOVE", 'unit': unit['id'], 'dir': "E"}
+                        command['commands'].append(action)
+                    elif (unit['x'], unit['y'] - 1) not in self.map.walls:
+                        action = {'command': "MOVE", 'unit': unit['id'], 'dir': "S"}
+                        command['commands'].append(action)
+                    elif (unit['x'] - 1, unit['y']) not in self.map.walls:
+                        action = {'command': "MOVE", 'unit': unit['id'], 'dir': "W"}
+                        command['commands'].append(action)
                     # Do scout stuff
             elif self.stage == 2:
                 if unit['type'] == 'worker':
@@ -301,7 +322,7 @@ class Game:
 
         #command['commands'].append({'command': "CREATE", 'unit': })
 
-        #print(command)
+        print(command)
 
         self.last_commands = command
 
@@ -359,7 +380,7 @@ class Tank(Unit):
 """
 if __name__ == "__main__":
     port = int(sys.argv[1]) if (len(sys.argv) > 1 and sys.argv[1]) else 9090
-    host = '10.8.2.42'
+    host = '0.0.0.0'
 
     server = ss.TCPServer((host, port), NetworkHandler)
     print("listening on {}:{}".format(host, port))

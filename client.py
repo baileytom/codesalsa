@@ -19,13 +19,25 @@ class NetworkHandler(ss.StreamRequestHandler):
     def handle(self):
         game = Game()
 
+        last_unit_updates = []
+
         while True:
             data = self.rfile.readline().decode() # reads until '\n' encountered
             json_data = json.loads(str(data))
             # uncomment the following line to see pretty-printed data
             # print(json.dumps(json_data, indent=4, sort_keys=True))
             #response = game.get_random_move(json_data).encode()
-            response = game.get_moves(json_data).encode()
+
+            #for key, value in json_data['unit_updates']:
+            #    if key not in game.unit_list:
+             #       game.unit_list[key] = value
+
+
+            if json_data["unit_updates"] == []:
+                response = game.get_random_move(json_data).encode()
+            else:
+                last_unit_updates = json_data["unit_updates"]
+                response = game.get_moves(json_data).encode()
             self.wfile.write(response)
 
 
@@ -36,6 +48,8 @@ class Game:
         self.directions = ['N', 'S', 'E', 'W']
         self.map = Map()
         #self.map.show_map()
+
+        self.unit_list = {}
 
         # Game stages
         # Stage 1: Gather & search
@@ -59,6 +73,10 @@ class Game:
         response = json.dumps(command, separators=(',',':')) + '\n'
         return response
 
+    def go_home(self, json_data):
+        for unit in json_data['unit_updates']:
+            unit['target'] = (0, 0)
+            move = self.a_star_search(unit['x'], unit['y'])
 
     def heuristic(self, a, b):
         (x1, y1) = a
@@ -155,6 +173,9 @@ class Game:
         units = set([unit['id'] for unit in json_data['unit_updates'] if unit['type'] != 'base'])
         self.units |= units
 
+
+        print("Units: {}".format(units))
+
         #print(json_data['tile_updates'])
 
         for tile in json_data['tile_updates']:
@@ -174,11 +195,14 @@ class Game:
                     self.map.settile(tile['x'], tile['y'], 1)
                     self.map.walls.append((tile['x'], tile['y']))
             try:
-                #print(tile['resources'])
-                if tile['resources'] != None:
+                print(tile['resources'])
+                if tile['resources'] != None or tile['resources']['total'] == 0:
+
                     self.map.settile(tile['x'], tile['y'], "r")
                     self.map.resources.append((tile['x'], tile['y']))
                     if tile['resources']['total'] == 0:
+                        self.map.resources.remove((tile['x'], tile['y']))
+                        self.map.walls.remove((tile['x'], tile['y']))
                         self._resource += 1
             except:
                 pass
@@ -245,7 +269,7 @@ class Game:
                     print("Location: {}, Target: {}, Westmod: {}, Northmod: {}".format(location, unit['target'], west_mod, north_mod))
 
 
-                    if (unit['x']-west_mod, unit['y']-north_mod) == unit['target']:
+                    if (unit['x']+west_mod, unit['y']-north_mod) == unit['target']:
 
                         action = {'command': "GATHER", 'unit': unit['id'], 'dir': move}
                         command['commands'].append(action)
@@ -269,7 +293,7 @@ class Game:
                     pass
                     # Scout
 
-        #self.map.show_map()
+        self.map.show_map()
 
         #command['commands'].append({'command': "CREATE", 'unit': })
 

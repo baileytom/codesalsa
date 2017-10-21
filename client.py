@@ -33,11 +33,11 @@ class NetworkHandler(ss.StreamRequestHandler):
              #       game.unit_list[key] = value
 
 
-            if json_data["unit_updates"] == []:
-                response = game.get_random_move(json_data).encode()
-            else:
-                last_unit_updates = json_data["unit_updates"]
-                response = game.get_moves(json_data).encode()
+            #if json_data["unit_updates"] == []:
+            #    response = game.get_random_move(json_data).encode()
+            #else:
+            #    last_unit_updates = json_data["unit_updates"]
+            response = game.get_moves(json_data).encode()
             self.wfile.write(response)
 
 
@@ -74,8 +74,8 @@ class Game:
         return response
 
     def go_home(self, json_data):
-        for unit in json_data['unit_updates']:
-            unit['target'] = (0, 0)
+        for unit in self.units:
+            target = (0, 0)
             move = self.a_star_search(unit['x'], unit['y'])
 
     def heuristic(self, a, b):
@@ -174,7 +174,7 @@ class Game:
         self.units |= units
 
 
-        print("Units: {}".format(units))
+        #print("Units: {}".format(units))
 
         #print(json_data['tile_updates'])
 
@@ -194,25 +194,29 @@ class Game:
             if tile['blocked']:
                     self.map.settile(tile['x'], tile['y'], 1)
                     self.map.walls.append((tile['x'], tile['y']))
-            try:
-                print(tile['resources'])
-                if tile['resources'] != None or tile['resources']['total'] == 0:
+            else:
+                try:
+                    self.map.walls.remove((tile['x'], tile['y']))
+                except:
+                    pass
 
-                    self.map.settile(tile['x'], tile['y'], "r")
+            #print(tile['resources'])
+            if tile['resources'] != None:
+
+                self.map.settile(tile['x'], tile['y'], "r")
+                if (tile['x'], tile['y']) not in self.map.resources:
                     self.map.resources.append((tile['x'], tile['y']))
-                    if tile['resources']['total'] == 0:
-                        self.map.resources.remove((tile['x'], tile['y']))
-                        self.map.walls.remove((tile['x'], tile['y']))
-                        self._resource += 1
-            except:
-                pass
+            else:
+                if (tile['x'], tile['y']) in self.map.resources:
+                    self.map.resources.remove((tile['x'], tile['y']))
+
 
         command = {'commands': []}
 
         print(self.map.resources)
-        print(self.map.invisible)
+        #print(self.map.invisible)
 
-        print("unit updates: {}".format(unit_updates))
+        #print("unit updates: {}".format(unit_updates))
 
         if unit_updates == []:
             for unit_id in units:
@@ -224,7 +228,7 @@ class Game:
         for unit in unit_updates:
 
             # Resource debugging
-            print("Resources: {}".format(unit['resource']))
+            #print("Resources: {}".format(unit['resource']))
 
 
             move = None
@@ -232,7 +236,7 @@ class Game:
             unit['target'] = None
             if self.stage == 1:
                 if unit['type'] == 'worker':
-                    print("test")
+                    #print("test")
                     try:
                         if unit['resource'] > 0:
                             unit['target'] = (0, 0)
@@ -241,9 +245,9 @@ class Game:
                                 unit['target'] = self.map.resources[self._resource]
                             except:
                                 unit['target'] = (0, 0)
-                        print("set target")
+                        #print("set target")
                     except:
-                        print("Target set failed")
+                        #print("Target set failed")
                         pass
 
                     #try:
@@ -266,7 +270,7 @@ class Game:
                         west_mod = -1
 
 
-                    print("Location: {}, Target: {}, Westmod: {}, Northmod: {}".format(location, unit['target'], west_mod, north_mod))
+                    #print("Location: {}, Target: {}, Westmod: {}, Northmod: {}".format(location, unit['target'], west_mod, north_mod))
 
 
                     if (unit['x']+west_mod, unit['y']-north_mod) == unit['target']:
@@ -293,11 +297,11 @@ class Game:
                     pass
                     # Scout
 
-        self.map.show_map()
+        #self.map.show_map()
 
         #command['commands'].append({'command': "CREATE", 'unit': })
 
-        print(command)
+        #print(command)
 
         self.last_commands = command
 
@@ -305,6 +309,10 @@ class Game:
         return response
 
 
+class Unit:
+    def __init__(self, x, y):
+        self.x = 0
+        self.y = 0
 
 class Map:
     def __init__(self):

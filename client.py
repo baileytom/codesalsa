@@ -24,19 +24,6 @@ class NetworkHandler(ss.StreamRequestHandler):
         while True:
             data = self.rfile.readline().decode() # reads until '\n' encountered
             json_data = json.loads(str(data))
-            # uncomment the following line to see pretty-printed data
-            # print(json.dumps(json_data, indent=4, sort_keys=True))
-            #response = game.get_random_move(json_data).encode()
-
-            #for key, value in json_data['unit_updates']:
-            #    if key not in game.unit_list:
-             #       game.unit_list[key] = value
-
-
-            #if json_data["unit_updates"] == []:
-            #    response = game.get_random_move(json_data).encode()
-            #else:
-            #    last_unit_updates = json_data["unit_updates"]
             response = game.get_moves(json_data).encode()
             self.wfile.write(response)
 

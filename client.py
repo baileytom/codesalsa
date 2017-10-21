@@ -3,9 +3,8 @@
 import sys
 import json
 import random
-import 
 
-import implementation
+from implementation import *
 
 
 if (sys.version_info > (3, 0)):
@@ -66,12 +65,15 @@ class Game:
         #for unit in units:
         #    if self._units[unit['id']] == None:
 
-    def heuristic(a, b):
+    def heuristic(self, a, b):
         (x1, y1) = a
         (x2, y2) = b
         return abs(x1 - x2) + abs(y1 - y2)
 
-    def a_star_search(graph, start, goal):
+    def a_star_search(self, start, goal):
+
+        graph = SquareGrid(self.map)
+
         frontier = PriorityQueue()
         frontier.put(start, 0)
         came_from = {}
@@ -93,7 +95,11 @@ class Game:
                     frontier.put(next, priority)
                     came_from[next] = current
 
-        return came_from, cost_so_far
+        print(current, next)
+
+        return
+
+        #return came_from, cost_so_far
 
     def get_moves(self, json_data):
         unit_updates = json_data['unit_updates']
@@ -104,13 +110,20 @@ class Game:
 
         for tile in json_data['tile_updates']:
             if not tile['visible']:
+                self.map.invisible.append((tile['x'], tile['y']))
                 continue
+            else:
+                try:
+                    self.map.invisible.remove((tile['x'], tile['y']))
+                except:
+                    pass
 
             #print(str(tile) + "\n")
             # Tile
             # x, y, visible, blocked, resources : {id, type, total, value?}
             if tile['blocked']:
                     self.map.settile(tile['x'], tile['y'], 1)
+                    self.map.walls.append((tile['x'], tile['y']))
             try:
                 #print(tile['resources'])
                 if tile['resources'] != None:
@@ -122,10 +135,21 @@ class Game:
 
 
         for unit in unit_updates:
+            move = None
+            location = (unit['x'], unit['y'])
+            unit['target'] = location
             if self.stage == 1:
                 if unit['type'] == 'worker':
-                    unit['target'] = self.map.resources[0]
+                    try:
+                        unit['target'] = self.map.resources[0]
+                    except:
+                        pass
+                    try:
+                        unit['target'] = self.map.invisible[0]
+                    except:
+                        pass
 
+                    move = self.a_star_search(location, unit['target'])
                     # Do worker stuff
                 elif unit['type'] == 'scout':
                     pass
@@ -157,6 +181,8 @@ class Map:
         self.grid[self.originx][self.originy] = 1
 
         self.resources = []
+        self.walls = []
+        self.invisible = []
 
     def show_map(self):
         print(self.resources)

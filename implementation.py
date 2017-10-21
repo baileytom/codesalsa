@@ -85,7 +85,13 @@ class SquareGrid:
         results = filter(self.passable, results)
         return results
 
-class GridWithWeights(SquareGrid):
+    def __init__(self, map):
+        self.width = 60
+        self.height = 60
+
+        self.walls = map.walls
+
+"""class GridWithWeights(SquareGrid):
     def __init__(self, width, height):
         super().__init__(width, height)
         self.weights = {}
@@ -102,7 +108,7 @@ diagram4.weights = {loc: 5 for loc in [(3, 4), (3, 5), (4, 1), (4, 2),
                                        (5, 7), (5, 8), (6, 2), (6, 3), 
                                        (6, 4), (6, 5), (6, 6), (6, 7), 
                                        (7, 3), (7, 4), (7, 5)]}
-
+"""
 import heapq
 
 class PriorityQueue:
